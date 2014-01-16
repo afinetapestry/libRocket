@@ -26,26 +26,132 @@ string GetInfoLog(GLuint object, void (_GL_CALL *glGet__iv)(GLuint, GLenum, GLin
 	return log;
 }
 
+GLuint program = 0;
+GLuint vertShader = 0;
+GLuint fragShader = 0;
+GLuint vertexArray = 0;
+GLuint vertexBuffer = 0;
+GLuint indexBuffer = 0;
+GLuint vertexPosition = -1;
+GLuint vertexColor = -1;
+GLuint vertexTexCoord = -1;
+GLuint texSampler = -1;
+GLuint trans = -1;
+GLuint projection = -1;
 
 struct RendererGeometry {
 	GLuint vao, vbo, vio;
-	int numVertices;
-	Rocket::Core::TextureHandle texture;
+	int numVert;
+	int numInd;
+	Rocket::Core::TextureHandle tex;
 
-	RendererGeometry() : vao(0), vbo(0), vio(0), texture(0), numVertices(0) {};
+	RendererGeometry() : vao(0), vbo(0), vio(0), tex(0), numVert(0) {
+		glGenVertexArrays(1, &vao);
+		_glException();
+		glGenBuffers(1, &vbo);
+		_glException();
+		glGenBuffers(1, &vio);
+		_glException();
+	};
+
+	void Bind() {
+		glBindVertexArray(vao);
+		_glException();
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		_glException();
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vio);
+		_glException();
+	}
+
+	void Unbind() {
+		glBindVertexArray(0);
+		_glException();
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		_glException();
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		_glException();
+	}
+
+	void Buffer(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture) {
+		tex = texture;
+		numVert = num_vertices;
+		numInd = num_indices;
+
+		Bind();
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Rocket::Core::Vertex) * num_vertices, vertices, GL_STATIC_DRAW);
+		_glException();
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * num_indices, indices, GL_STATIC_DRAW);
+		_glException();
+
+		Unbind();
+	};
+
+	void Render(const Rocket::Core::Vector2f & translation) {
+		glUseProgram(program);
+		_glException();
+
+		Bind();
+
+		glActiveTexture(GL_TEXTURE0);
+		_glException();
+		glBindTexture(GL_TEXTURE_2D, tex);
+		_glException();
+		glUniform1i(texSampler, 0);
+		_glException();
+
+		glEnable(GL_BLEND);
+		_glException();
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		_glException();
+
+		glEnableVertexAttribArray(vertexPosition);
+		_glException();
+		glEnableVertexAttribArray(vertexColor);
+		_glException();
+		glEnableVertexAttribArray(vertexTexCoord);
+		_glException();
+
+		glVertexAttribPointer(vertexPosition, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), 0);
+		_glException();
+		glVertexAttribPointer(vertexColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Rocket::Core::Vertex), (GLvoid *)sizeof(Rocket::Core::Vertex::position));
+		_glException();
+		glVertexAttribPointer(vertexTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), (GLvoid *)(sizeof(Rocket::Core::Vertex::position) + sizeof(Rocket::Core::Vertex::colour)));
+		_glException();
+
+		glUniform2f(trans, translation.x, translation.y);
+		_glException();
+
+		// Draw the geometry
+		glDrawElements(GL_TRIANGLES, numInd, GL_UNSIGNED_INT, 0);
+		_glException();
+
+		glDisableVertexAttribArray(vertexPosition);
+		_glException();
+		glDisableVertexAttribArray(vertexColor);
+		_glException();
+		glDisableVertexAttribArray(vertexTexCoord);
+		_glException();
+
+		glDisable(GL_BLEND);
+		_glException();
+
+		Unbind();
+
+		glUseProgram(0);
+		_glException();
+	};
 
 	~RendererGeometry() {
-		if (vbo) {
-			glDeleteBuffers(1, &vbo);
-		}
-
-		if (vio) {
-			glDeleteBuffers(1, &vio);
-		}
-
-		vao = vbo = vio = 0;
+		glDeleteBuffers(1, &vio);
+		_glException();
+		glDeleteBuffers(1, &vbo);
+		_glException();
+		glDeleteVertexArrays(1, &vao);
 	};
 };
+
+RendererGeometry * dynamic;
 
 SDL2RenderInterface::SDL2RenderInterface() {
 	program = glCreateProgram();
@@ -99,13 +205,6 @@ SDL2RenderInterface::SDL2RenderInterface() {
 		throw runtime_error(log);
 	}
 
-	glGenVertexArrays(1, &vertexArray);
-	_glException();
-	glGenBuffers(1, &vertexBuffer);
-	_glException();
-	glGenBuffers(1, &indexBuffer);
-	_glException();
-
 	texSampler = glGetUniformLocation(program, "texSampler");
 	vertexTexCoord = glGetAttribLocation(program, "vertexTexCoord");
 	trans = glGetUniformLocation(program, "translation");
@@ -113,16 +212,10 @@ SDL2RenderInterface::SDL2RenderInterface() {
 	vertexPosition = glGetAttribLocation(program, "vertexPosition");
 	vertexColor = glGetAttribLocation(program, "vertexColor");
 
-	SetViewport(1024, 768);
+	dynamic = new RendererGeometry();
 }
 
 SDL2RenderInterface::~SDL2RenderInterface() {
-	glDeleteVertexArrays(1, &vertexBuffer);
-	_glException();
-	glDeleteBuffers(1, &indexBuffer);
-	_glException();
-	glDeleteBuffers(1, &vertexArray);
-	_glException();
 	glUseProgram(0);
 	_glException();
 	glDeleteShader(fragShader);
@@ -131,6 +224,8 @@ SDL2RenderInterface::~SDL2RenderInterface() {
 	_glException();
 	glDeleteProgram(program);
 	_glException();
+
+	delete dynamic;
 }
 
 void SDL2RenderInterface::SetViewport(int width, int height) {
@@ -165,83 +260,35 @@ void SDL2RenderInterface::SetViewport(int width, int height) {
 }
 
 void SDL2RenderInterface::RenderGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f & translation) {
-	glUseProgram(program);
-	_glException();
+	dynamic->Bind();
 
-	glBindVertexArray(vertexArray);
-	_glException();
+	dynamic->Buffer(vertices, num_vertices, indices, num_indices, texture);
 
-	// Populate vertex buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Rocket::Core::Vertex) * num_vertices, vertices, GL_STATIC_DRAW);
+	dynamic->Render(translation);
 
-	// Populate index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * num_indices, indices, GL_STATIC_DRAW);
-
-	// Set up the texture
-	glActiveTexture(GL_TEXTURE0);
-	_glException();
-	glBindTexture(GL_TEXTURE_2D, (GLuint) texture);
-	_glException();
-	glUniform1i(texSampler, 0);
-	_glException();
-
-	glEnable(GL_BLEND);
-	_glException();
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	_glException();
-
-	// Set up the per vertex texture coords
-	glEnableVertexAttribArray(vertexTexCoord);
-	_glException();
-	glVertexAttribPointer(vertexTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), (GLvoid *)(sizeof(Rocket::Core::Vertex::position) + sizeof(Rocket::Core::Vertex::colour)));
-	_glException();
-
-	// Set up uniforms
-	glUniform2f(trans, translation.x, translation.y);
-	_glException();
-
-
-	// Set up per-vertex attributes
-	glEnableVertexAttribArray(vertexPosition);
-	_glException();
-	glEnableVertexAttribArray(vertexColor);
-	_glException();
-	glVertexAttribPointer(vertexPosition, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), 0);
-	_glException();
-	glVertexAttribPointer(vertexColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Rocket::Core::Vertex), (GLvoid *)sizeof(Rocket::Core::Vertex::position));
-	_glException();
-
-	// Draw the geometry
-	glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_INT, 0);
-	_glException();
-
-	glDisableVertexAttribArray(vertexPosition);
-	_glException();
-	glDisableVertexAttribArray(vertexColor);
-	_glException();
-	glDisableVertexAttribArray(vertexTexCoord);
-	_glException();
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	_glException();
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	_glException();
-	glBindVertexArray(0);
-	_glException();
+	dynamic->Unbind();
 }
 
 Rocket::Core::CompiledGeometryHandle SDL2RenderInterface::CompileGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture) {
-	//RendererGeometry * geometry = new RendererGeometry();
-	return (Rocket::Core::CompiledGeometryHandle)NULL;
+	RendererGeometry * geo = new RendererGeometry();
+	geo->Buffer(vertices, num_vertices, indices, num_indices, texture);
+	return (Rocket::Core::CompiledGeometryHandle)geo;
+	//return (Rocket::Core::CompiledGeometryHandle)NULL;
 }
 
 void SDL2RenderInterface::RenderCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry, const Rocket::Core::Vector2f & translation) {
+	RendererGeometry * geo = (RendererGeometry *)geometry;
+	geo->Render(translation);
 }
 
 void SDL2RenderInterface::ReleaseCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry) {
+	RendererGeometry * geo = (RendererGeometry *)geometry;
+	delete geo;
 }
 
+/**
+ * @author Lloyd Weehuizen
+ */
 void SDL2RenderInterface::EnableScissorRegion(bool enable) {
 	if (enable) {
 		glEnable(GL_SCISSOR_TEST);

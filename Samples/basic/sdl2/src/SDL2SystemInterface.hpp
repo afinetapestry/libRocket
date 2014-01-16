@@ -1,5 +1,5 @@
-#ifndef __SYSTEMINTERFACE_H__
-#define __SYSTEMINTERFACE_H__
+#ifndef SYSTEMINTERFACE_HPP
+#define SYSTEMINTERFACE_HPP
 
 #include <chrono>
 
@@ -14,12 +14,17 @@ namespace {
 	using Duration = std::chrono::duration<float>;
 }
 
+/**
+ * @author Miguel Martin
+ * @url https://github.com/miguelishawt/SDL2-libRocket-SystemInterface
+ */
 class SDL2SystemInterface : public Rocket::Core::SystemInterface
 {
 public:
 	
-	/// Get the number of seconds elapsed since the start of the application.
-	/// \return Elapsed time, in seconds.
+	/**
+	 * @author Jon Hatchett
+	 */
 	virtual float GetElapsedTime() {
 		return Duration(Clock::now().time_since_epoch()).count();
 	}

@@ -1,5 +1,7 @@
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 #include <Rocket/Core.h>
 #include <Rocket/Debugger/Debugger.h>
@@ -12,6 +14,11 @@
 #include "glexception.hpp"
 #include "sdlbits.h"
 
+#define FPS 60.0f
+
+using Clock = std::chrono::high_resolution_clock;
+using TimePoint = std::chrono::time_point<Clock>;
+using Duration = std::chrono::duration<float>;
 using namespace std;
 
 int main(int argc, const char * argv[]) {
@@ -82,18 +89,17 @@ int main(int argc, const char * argv[]) {
 	// Main loop
 	bool running = true;
 	SDL_Event event;
+	TimePoint tick = Clock::now();
 	while (running) {
 		context->Update();
 
 		SDL_GL_MakeCurrent(window, glContext);
 		glClear(GL_COLOR_BUFFER_BIT);
 		_glException();
-		//cout << ".";
-		//cout.flush();
 		context->Render();
 		SDL_GL_SwapWindow(window);
 
-		if (SDL_WaitEvent(&event)) {
+		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
@@ -129,9 +135,12 @@ int main(int argc, const char * argv[]) {
 					running = false;
 					break;
 			}
-		} else {
-			throw runtime_error(SDL_GetError());
 		}
+
+		Duration delta = Clock::now() - tick;
+		Duration delay = max(Duration(1.0f / FPS) - delta, Duration(1e-3)); // Max FPS 1/1000. Give the OS a break.
+		this_thread::sleep_for(delay);
+		tick = Clock::now();
 	}
 
 	// Clean up libRocket

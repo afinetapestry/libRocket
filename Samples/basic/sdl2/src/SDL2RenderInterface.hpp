@@ -14,19 +14,6 @@ namespace {
 }
 
 class SDL2RenderInterface : public Rocket::Core::RenderInterface {
-	GLuint program = 0;
-	GLuint vertShader = 0;
-	GLuint fragShader = 0;
-	GLuint vertexArray = 0;
-	GLuint vertexBuffer = 0;
-	GLuint indexBuffer = 0;
-	GLuint vertexPosition = -1;
-	GLuint vertexColor = -1;
-	GLuint vertexTexCoord = -1;
-	GLuint texSampler = -1;
-	GLuint trans = -1;
-	GLuint projection = -1;
-
 	int m_width = 0;
 	int m_height = 0;
 
