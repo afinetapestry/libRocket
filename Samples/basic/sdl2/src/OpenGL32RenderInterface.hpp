@@ -13,13 +13,17 @@ namespace {
 	using namespace std;
 }
 
-class SDL2RenderInterface : public Rocket::Core::RenderInterface {
+/**
+ * @author Jon Hatchett
+ * @author Kyle (https://stackoverflow.com/users/453056/kyle) (https://stackoverflow.com/questions/20187797/getting-textures-to-work-in-opengl-3-2)
+ */
+class OpenGL32RenderInterface : public Rocket::Core::RenderInterface {
 	int m_width = 0;
 	int m_height = 0;
 
 public:
-	SDL2RenderInterface();
-	~SDL2RenderInterface();
+	OpenGL32RenderInterface();
+	~OpenGL32RenderInterface();
 
 	void SetViewport(int width, int height);
 

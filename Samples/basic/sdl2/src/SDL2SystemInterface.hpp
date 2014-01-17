@@ -6,25 +6,21 @@
 #include <Rocket/Core/SystemInterface.h>
 #include <Rocket/Core/Input.h>
 
-#include <SDL2/SDL_keycode.h>
+#include "sdlbits.h"
 
 namespace {
-	using Clock = std::chrono::system_clock;
-	//using TimePoint = std::chrono::time_point<Clock>;
+	using Clock = std::chrono::high_resolution_clock;
 	using Duration = std::chrono::duration<float>;
 }
 
 /**
- * @author Miguel Martin
- * @url https://github.com/miguelishawt/SDL2-libRocket-SystemInterface
+ * @author Miguel Martin (https://github.com/miguelishawt/SDL2-libRocket-SystemInterface)
+ * @author Jon Hatchett
+ * @author Gabriel Jacobo
  */
-class SDL2SystemInterface : public Rocket::Core::SystemInterface
-{
+class SDL2SystemInterface : public Rocket::Core::SystemInterface {
 public:
 	
-	/**
-	 * @author Jon Hatchett
-	 */
 	virtual float GetElapsedTime() {
 		return Duration(Clock::now().time_since_epoch()).count();
 	}
@@ -39,9 +35,9 @@ public:
 	virtual void Release();
     
     int GetKeyModifiers() const;
-    Rocket::Core::Input::KeyIdentifier TranslateKey(const SDL_Keycode&) const;
+    Rocket::Core::Input::KeyIdentifier TranslateKey(const SDL_Keysym &) const;
     
     int TranslateButton(int button) const;
 };
 
-#endif // __SYSTEMINTERFACE_H__
+#endif // SYSTEMINTERFACE_HPP

@@ -3,18 +3,81 @@
 #include <string>
 #include <utility>
 
-#include "SDL2RenderInterface.hpp"
+#include "OpenGL32RenderInterface.hpp"
 
 #include "glexception.hpp"
 
-string LoadFile(const string & filename) {
-	ifstream file;
-	file.exceptions(std::ifstream::failbit);
-	file.open(filename.c_str());
-	string text(istreambuf_iterator<char>(file), (istreambuf_iterator<char>()));
-	return text;
-}
+const char * colorVert = R"delim(
+#version 150
 
+uniform vec2 translation;
+uniform mat4 projection;
+uniform vec2 viewDimensions;
+
+in vec2 vertexPosition;
+in vec4 vertexColor;
+
+out vec4 fragColor;
+
+void main() {
+	fragColor = vertexColor;
+	gl_Position = projection * vec4(vertexPosition + translation, 0.0, 1.0);
+}
+)delim";
+
+const char * colorFrag = R"delim(
+#version 150
+
+in vec2 texCoord;
+in vec4 fragColor;
+
+out vec4 finalColor;
+
+void main() {
+    finalColor = fragColor;
+}
+)delim";
+
+const char * texVert = R"delim(
+#version 150
+
+uniform vec2 translation;
+uniform mat4 projection;
+uniform vec2 viewDimensions;
+
+in vec2 vertexPosition;
+in vec4 vertexColor;
+in vec2 vertexTexCoord;
+
+out vec2 texCoord;
+out vec4 fragColor;
+
+void main() {
+	texCoord = vertexTexCoord;
+	fragColor = vertexColor;
+	gl_Position = projection * vec4(vertexPosition + translation, 0.0, 1.0);
+}
+)delim";
+
+const char * texFrag = R"delim(
+#version 150
+
+uniform sampler2D texSampler;
+
+in vec2 texCoord;
+in vec4 fragColor;
+
+out vec4 finalColor;
+
+void main() {
+    vec4 objectColor = texture2D(texSampler, texCoord);
+    finalColor = objectColor * fragColor;
+}
+)delim";
+
+/**
+ *
+ */
 string GetInfoLog(GLuint object, void (_GL_CALL *glGet__iv)(GLuint, GLenum, GLint *), void (_GL_CALL *glGet__InfoLog)(GLuint, GLsizei, GLsizei *, GLchar *)) {
 	GLint length;
 	string log;
@@ -26,9 +89,12 @@ string GetInfoLog(GLuint object, void (_GL_CALL *glGet__iv)(GLuint, GLenum, GLin
 	return log;
 }
 
-GLuint program = 0;
-GLuint vertShader = 0;
-GLuint fragShader = 0;
+GLuint texProgram = 0;
+GLuint colorProgram = 0;
+GLuint colorVertShader = 0;
+GLuint texVertShader = 0;
+GLuint colorFragShader = 0;
+GLuint texFragShader = 0;
 GLuint vertexArray = 0;
 GLuint vertexBuffer = 0;
 GLuint indexBuffer = 0;
@@ -45,7 +111,7 @@ struct RendererGeometry {
 	int numInd;
 	Rocket::Core::TextureHandle tex;
 
-	RendererGeometry() : vao(0), vbo(0), vio(0), tex(0), numVert(0) {
+	RendererGeometry() : vao(0), vbo(0), vio(0), numVert(0), numInd(0), tex(0) {
 		glGenVertexArrays(1, &vao);
 		_glException();
 		glGenBuffers(1, &vbo);
@@ -88,17 +154,37 @@ struct RendererGeometry {
 	};
 
 	void Render(const Rocket::Core::Vector2f & translation) {
-		glUseProgram(program);
-		_glException();
+		GLuint program = tex ? texProgram : colorProgram;
 
 		Bind();
 
-		glActiveTexture(GL_TEXTURE0);
+		glUseProgram(program);
 		_glException();
-		glBindTexture(GL_TEXTURE_2D, tex);
+
+		vertexPosition = glGetAttribLocation(program, "vertexPosition");
 		_glException();
-		glUniform1i(texSampler, 0);
+		vertexColor = glGetAttribLocation(program, "vertexColor");
 		_glException();
+		trans = glGetUniformLocation(program, "translation");
+		_glException();
+
+		if (tex) {
+			texSampler = glGetUniformLocation(program, "texSampler");
+			_glException();
+			glActiveTexture(GL_TEXTURE0);
+			_glException();
+			glBindTexture(GL_TEXTURE_2D, tex);
+			_glException();
+			glUniform1i(texSampler, 0);
+			_glException();
+
+			vertexTexCoord = glGetAttribLocation(program, "vertexTexCoord");
+			_glException();
+			glEnableVertexAttribArray(vertexTexCoord);
+			_glException();
+			glVertexAttribPointer(vertexTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), (GLvoid *)(sizeof(Rocket::Core::Vertex::position) + sizeof(Rocket::Core::Vertex::colour)));
+			_glException();
+		}
 
 		glEnable(GL_BLEND);
 		_glException();
@@ -109,14 +195,10 @@ struct RendererGeometry {
 		_glException();
 		glEnableVertexAttribArray(vertexColor);
 		_glException();
-		glEnableVertexAttribArray(vertexTexCoord);
-		_glException();
 
 		glVertexAttribPointer(vertexPosition, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), 0);
 		_glException();
 		glVertexAttribPointer(vertexColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Rocket::Core::Vertex), (GLvoid *)sizeof(Rocket::Core::Vertex::position));
-		_glException();
-		glVertexAttribPointer(vertexTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), (GLvoid *)(sizeof(Rocket::Core::Vertex::position) + sizeof(Rocket::Core::Vertex::colour)));
 		_glException();
 
 		glUniform2f(trans, translation.x, translation.y);
@@ -130,8 +212,11 @@ struct RendererGeometry {
 		_glException();
 		glDisableVertexAttribArray(vertexColor);
 		_glException();
-		glDisableVertexAttribArray(vertexTexCoord);
-		_glException();
+
+		if (tex) {
+			glDisableVertexAttribArray(vertexTexCoord);
+			_glException();
+		}
 
 		glDisable(GL_BLEND);
 		_glException();
@@ -153,82 +238,120 @@ struct RendererGeometry {
 
 RendererGeometry * dynamic;
 
-SDL2RenderInterface::SDL2RenderInterface() {
-	program = glCreateProgram();
+OpenGL32RenderInterface::OpenGL32RenderInterface() {
+	colorVertShader = glCreateShader(GL_VERTEX_SHADER);
 	_glException();
-
-	vertShader = glCreateShader(GL_VERTEX_SHADER);
+	int colorVertLen = strlen(colorVert);
+	glShaderSource(colorVertShader, 1, &colorVert, &colorVertLen);
 	_glException();
-	string vertSource = LoadFile("shaders/shader.vert");
-	const char * vertStr = vertSource.c_str();
-	int vertLen = vertSource.length();
-	glShaderSource(vertShader, 1, &vertStr, &vertLen);
+	glCompileShader(colorVertShader);
 	_glException();
-	glCompileShader(vertShader);
+	GLint texVertStatus;
+	glGetShaderiv(colorVertShader, GL_COMPILE_STATUS, &texVertStatus);
 	_glException();
-	GLint vertStatus;
-	glGetShaderiv(vertShader, GL_COMPILE_STATUS, &vertStatus);
-	_glException();
-	if (!vertStatus) {
-		string log = "Shader Compilation Failed:\n" + GetInfoLog(vertShader, *glGetShaderiv, *glGetShaderInfoLog);
-		throw runtime_error(log);
-	}
-	glAttachShader(program, vertShader);
-	_glException();
-
-	fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-	_glException();
-	string fragSource = LoadFile("shaders/shader.frag");
-	const char * fragStr = fragSource.c_str();
-	int fragLen = fragSource.length();
-	glShaderSource(fragShader, 1, &fragStr, &fragLen);
-	_glException();
-	glCompileShader(fragShader);
-	_glException();
-	GLint fragStatus;
-	glGetShaderiv(fragShader, GL_COMPILE_STATUS, &fragStatus);
-	_glException();
-	if (!fragStatus) {
-		string log = "Shader Compilation Failed:\n" + GetInfoLog(fragShader, *glGetShaderiv, *glGetShaderInfoLog);
-		throw runtime_error(log);
-	}
-	glAttachShader(program, fragShader);
-	_glException();
-
-	glLinkProgram(program);
-	_glException();
-	GLint linkStatus;
-	glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
-	_glException();
-	if (!linkStatus) {
-		string log = "Shader Linking Failed:\n" + GetInfoLog(program, *glGetProgramiv, *glGetProgramInfoLog);
+	if (!texVertStatus) {
+		string log = "Shader Compilation Failed:\n" + GetInfoLog(colorVertShader, *glGetShaderiv, *glGetShaderInfoLog);
 		throw runtime_error(log);
 	}
 
-	texSampler = glGetUniformLocation(program, "texSampler");
-	vertexTexCoord = glGetAttribLocation(program, "vertexTexCoord");
-	trans = glGetUniformLocation(program, "translation");
-	projection = glGetUniformLocation(program, "projection");
-	vertexPosition = glGetAttribLocation(program, "vertexPosition");
-	vertexColor = glGetAttribLocation(program, "vertexColor");
+	colorFragShader = glCreateShader(GL_FRAGMENT_SHADER);
+	_glException();
+	int colorFragLen = strlen(colorFrag);
+	glShaderSource(colorFragShader, 1, &colorFrag, &colorFragLen);
+	_glException();
+	glCompileShader(colorFragShader);
+	_glException();
+	GLint colorFragStatus;
+	glGetShaderiv(colorFragShader, GL_COMPILE_STATUS, &colorFragStatus);
+	_glException();
+	if (!colorFragStatus) {
+		string log = "Shader Compilation Failed:\n" + GetInfoLog(colorFragShader, *glGetShaderiv, *glGetShaderInfoLog);
+		throw runtime_error(log);
+	}
+
+	colorProgram = glCreateProgram();
+	_glException();
+	glAttachShader(colorProgram, colorVertShader);
+	_glException();
+	glAttachShader(colorProgram, colorFragShader);
+	_glException();
+	glLinkProgram(colorProgram);
+	_glException();
+	GLint colorLinkStatus;
+	glGetProgramiv(colorProgram, GL_LINK_STATUS, &colorLinkStatus);
+	_glException();
+	if (!colorLinkStatus) {
+		string log = "Shader Linking Failed:\n" + GetInfoLog(colorProgram, *glGetProgramiv, *glGetProgramInfoLog);
+		throw runtime_error(log);
+	}
+
+	texVertShader = glCreateShader(GL_VERTEX_SHADER);
+	_glException();
+	int texVertLen = strlen(texVert);
+	glShaderSource(texVertShader, 1, &texVert, &texVertLen);
+	_glException();
+	glCompileShader(texVertShader);
+	_glException();
+	GLint colorVertStatus;
+	glGetShaderiv(texVertShader, GL_COMPILE_STATUS, &colorVertStatus);
+	_glException();
+	if (!colorVertStatus) {
+		string log = "Shader Compilation Failed:\n" + GetInfoLog(texVertShader, *glGetShaderiv, *glGetShaderInfoLog);
+		throw runtime_error(log);
+	}
+
+	texFragShader = glCreateShader(GL_FRAGMENT_SHADER);
+	_glException();
+	int texFragLen = strlen(texFrag);
+	glShaderSource(texFragShader, 1, &texFrag, &texFragLen);
+	_glException();
+	glCompileShader(texFragShader);
+	_glException();
+	GLint texFragStatus;
+	glGetShaderiv(texFragShader, GL_COMPILE_STATUS, &texFragStatus);
+	_glException();
+	if (!colorFragStatus) {
+		string log = "Shader Compilation Failed:\n" + GetInfoLog(texFragShader, *glGetShaderiv, *glGetShaderInfoLog);
+		throw runtime_error(log);
+	}
+
+	texProgram = glCreateProgram();
+	_glException();
+	glAttachShader(texProgram, texVertShader);
+	_glException();
+	glAttachShader(texProgram, texFragShader);
+		_glException();
+	glLinkProgram(texProgram);
+	_glException();
+	GLint texLinkStatus;
+	glGetProgramiv(texProgram, GL_LINK_STATUS, &texLinkStatus);
+	_glException();
+	if (!texLinkStatus) {
+		string log = "Shader Linking Failed:\n" + GetInfoLog(texProgram, *glGetProgramiv, *glGetProgramInfoLog);
+		throw runtime_error(log);
+	}
 
 	dynamic = new RendererGeometry();
 }
 
-SDL2RenderInterface::~SDL2RenderInterface() {
+OpenGL32RenderInterface::~OpenGL32RenderInterface() {
 	glUseProgram(0);
 	_glException();
-	glDeleteShader(fragShader);
+	glDeleteProgram(texProgram);
 	_glException();
-	glDeleteShader(vertShader);
+	glDeleteProgram(colorProgram);
 	_glException();
-	glDeleteProgram(program);
+	glDeleteShader(texFragShader);
+	_glException();
+	glDeleteShader(colorFragShader);
+	_glException();
+	glDeleteShader(texVertShader);
 	_glException();
 
 	delete dynamic;
 }
 
-void SDL2RenderInterface::SetViewport(int width, int height) {
+void OpenGL32RenderInterface::SetViewport(int width, int height) {
 	m_width = width;
 	m_height = height;
 
@@ -242,8 +365,6 @@ void SDL2RenderInterface::SetViewport(int width, int height) {
 	float far = 1.0f;
 	float near = -1.0f;
 
-	glUseProgram(program);
-	_glException();
 
 	// Ortho matrix in column major
 	GLfloat proj[4][4] = {
@@ -252,36 +373,42 @@ void SDL2RenderInterface::SetViewport(int width, int height) {
 		{0.0f,								0.0f,								-2.0f / (far - near),			0.0f},
 		{-(right + left) / (right - left),	-(top + bottom) / (top - bottom),	-(far + near) / (far - near),	1.0f}
 	};
+
+	glUseProgram(texProgram);
+	_glException();
+	projection = glGetUniformLocation(texProgram, "projection");
+	_glException();
 	glUniformMatrix4fv(projection, 1, GL_FALSE, (const GLfloat *)&proj);
 	_glException();
-
+	glUseProgram(colorProgram);
+	_glException();
+	projection = glGetUniformLocation(colorProgram, "projection");
+	_glException();
+	glUniformMatrix4fv(projection, 1, GL_FALSE, (const GLfloat *)&proj);
+	_glException();
 	glUseProgram(0);
 	_glException();
 }
 
-void SDL2RenderInterface::RenderGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f & translation) {
+void OpenGL32RenderInterface::RenderGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f & translation) {
 	dynamic->Bind();
-
 	dynamic->Buffer(vertices, num_vertices, indices, num_indices, texture);
-
 	dynamic->Render(translation);
-
 	dynamic->Unbind();
 }
 
-Rocket::Core::CompiledGeometryHandle SDL2RenderInterface::CompileGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture) {
+Rocket::Core::CompiledGeometryHandle OpenGL32RenderInterface::CompileGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture) {
 	RendererGeometry * geo = new RendererGeometry();
 	geo->Buffer(vertices, num_vertices, indices, num_indices, texture);
 	return (Rocket::Core::CompiledGeometryHandle)geo;
-	//return (Rocket::Core::CompiledGeometryHandle)NULL;
 }
 
-void SDL2RenderInterface::RenderCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry, const Rocket::Core::Vector2f & translation) {
+void OpenGL32RenderInterface::RenderCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry, const Rocket::Core::Vector2f & translation) {
 	RendererGeometry * geo = (RendererGeometry *)geometry;
 	geo->Render(translation);
 }
 
-void SDL2RenderInterface::ReleaseCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry) {
+void OpenGL32RenderInterface::ReleaseCompiledGeometry(Rocket::Core::CompiledGeometryHandle geometry) {
 	RendererGeometry * geo = (RendererGeometry *)geometry;
 	delete geo;
 }
@@ -289,7 +416,7 @@ void SDL2RenderInterface::ReleaseCompiledGeometry(Rocket::Core::CompiledGeometry
 /**
  * @author Lloyd Weehuizen
  */
-void SDL2RenderInterface::EnableScissorRegion(bool enable) {
+void OpenGL32RenderInterface::EnableScissorRegion(bool enable) {
 	if (enable) {
 		glEnable(GL_SCISSOR_TEST);
 		_glException();
@@ -298,7 +425,7 @@ void SDL2RenderInterface::EnableScissorRegion(bool enable) {
 		_glException();
 	}
 }
-void SDL2RenderInterface::SetScissorRegion(int x, int y, int width, int height) {
+void OpenGL32RenderInterface::SetScissorRegion(int x, int y, int width, int height) {
 	glScissor(x, m_height - (y + height), width, height);
 	_glException();
 }
@@ -321,7 +448,7 @@ struct TGAHeader {
 // Restore packing
 #pragma pack()
 
-bool SDL2RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_handle, Rocket::Core::Vector2i & texture_dimensions, const Rocket::Core::String & source) {
+bool OpenGL32RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_handle, Rocket::Core::Vector2i & texture_dimensions, const Rocket::Core::String & source) {
 	Rocket::Core::FileInterface * file_interface = Rocket::Core::GetFileInterface();
 	Rocket::Core::FileHandle file_handle = file_interface->Open(source);
 	if (!file_handle) {
@@ -386,7 +513,7 @@ bool SDL2RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_hand
 
 	return success;
 }
-bool SDL2RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & texture_handle, const Rocket::Core::byte * source, const Rocket::Core::Vector2i & source_dimensions){
+bool OpenGL32RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & texture_handle, const Rocket::Core::byte * source, const Rocket::Core::Vector2i & source_dimensions){
 	GLuint texture_id = 0;
 	glGenTextures(1, &texture_id);
 	_glException();
@@ -414,7 +541,7 @@ bool SDL2RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & texture_
 
 	return true;
 }
-void SDL2RenderInterface::ReleaseTexture(Rocket::Core::TextureHandle texture_handle) {
+void OpenGL32RenderInterface::ReleaseTexture(Rocket::Core::TextureHandle texture_handle) {
 	glDeleteTextures(1, (GLuint*) &texture_handle);
 	_glException();
 }

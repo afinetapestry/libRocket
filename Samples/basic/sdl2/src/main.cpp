@@ -1,3 +1,7 @@
+/**
+ * @author Jon Hatchett
+ */
+
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -6,7 +10,7 @@
 #include <Rocket/Core.h>
 #include <Rocket/Debugger/Debugger.h>
 
-#include "SDL2RenderInterface.hpp"
+#include "OpenGL32RenderInterface.hpp"
 #include "SDL2SystemInterface.hpp"
 #include "ShellFileInterface.hpp"
 
@@ -56,9 +60,9 @@ int main(int argc, const char * argv[]) {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	_glException();
 
-	// libRocket init
+	// Init libRocket
 	ShellFileInterface fileInterface("../../assets/");
-	SDL2RenderInterface renderInterface;
+	OpenGL32RenderInterface renderInterface;
 	SDL2SystemInterface systemInterface;
 
 	Rocket::Core::SetFileInterface(&fileInterface);
@@ -77,6 +81,7 @@ int main(int argc, const char * argv[]) {
 	Rocket::Core::Context * context = Rocket::Core::CreateContext("default", Rocket::Core::Vector2i(1024, 768));
 
 	Rocket::Debugger::Initialise(context);
+	Rocket::Debugger::SetVisible(true);
 
 	Rocket::Core::ElementDocument * document = context->LoadDocument("demo.rml");
 	if (!document) {
@@ -94,6 +99,8 @@ int main(int argc, const char * argv[]) {
 		context->Update();
 
 		SDL_GL_MakeCurrent(window, glContext);
+		glClearColor(0.0, 0.0, 0.0, 1.0);
+		_glException();
 		glClear(GL_COLOR_BUFFER_BIT);
 		_glException();
 		context->Render();
@@ -104,6 +111,8 @@ int main(int argc, const char * argv[]) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
 				case SDL_WINDOWEVENT_RESIZED:
+					Rocket::Core::Vector2i v(event.window.data1, event.window.data2);
+					context->SetDimensions(v);
 					renderInterface.SetViewport(event.window.data1, event.window.data2);
 					break;
 				}
@@ -114,10 +123,10 @@ int main(int argc, const char * argv[]) {
 						running = false;
 						break;
 					}
-					context->ProcessKeyDown(systemInterface.TranslateKey(event.key.keysym.sym), systemInterface.GetKeyModifiers());
+					context->ProcessKeyDown(systemInterface.TranslateKey(event.key.keysym), systemInterface.GetKeyModifiers());
 					break;
 				case SDL_KEYUP:
-					context->ProcessKeyUp(systemInterface.TranslateKey(event.key.keysym.sym), systemInterface.GetKeyModifiers());
+					context->ProcessKeyUp(systemInterface.TranslateKey(event.key.keysym), systemInterface.GetKeyModifiers());
 					break;
 				case SDL_MOUSEMOTION:
 					context->ProcessMouseMove(event.motion.x, event.motion.y, systemInterface.GetKeyModifiers());
@@ -129,7 +138,7 @@ int main(int argc, const char * argv[]) {
 					context->ProcessMouseButtonUp(systemInterface.TranslateButton(event.button.button), systemInterface.GetKeyModifiers());
 					break;
 				case SDL_MOUSEWHEEL:
-					context->ProcessMouseWheel(event.wheel.x, systemInterface.GetKeyModifiers());
+					context->ProcessMouseWheel(-event.wheel.y, systemInterface.GetKeyModifiers());
 					break;
 				case SDL_QUIT:
 					running = false;
