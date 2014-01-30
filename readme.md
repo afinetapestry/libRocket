@@ -9,6 +9,8 @@ libRocket uses the time-tested open standards XHTML1.0 and CSS2.0 (while borrowi
 HTML5 and CSS3), and extends them with features suited towards real-time applications. Because of 
 this, you don't have to learn a whole new proprietary technology like other libraries in this space.
 
+This fork of libRocket contains a complete SDL2 + OpenGL 3.2 version of the libRocket System, File and Render interfaces free to be used by anyone.
+
 ## Features
 
 - Cross platform architecture: Windows, Mac, Linux, iPhone, etc.
@@ -26,6 +28,7 @@ this, you don't have to learn a whole new proprietary technology like other libr
 ## License (MIT)
  
  Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
+ Copyright (c) 2014 Jon Hatchett
  
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
