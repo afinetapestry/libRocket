@@ -28,6 +28,7 @@ This fork of libRocket contains a complete SDL2 + OpenGL 3.2 version of the libR
 ## License (MIT)
  
  Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
+ 
  Copyright (c) 2014 Jon Hatchett
  
  Permission is hereby granted, free of charge, to any person obtaining a copy
