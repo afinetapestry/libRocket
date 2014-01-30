@@ -15,7 +15,6 @@
 #include "ShellFileInterface.hpp"
 
 #include "glbits.h"
-#include "glexception.hpp"
 #include "sdlbits.h"
 
 #define FPS 60.0f
@@ -57,8 +56,9 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 
+	glViewport(0, 0, 1024, 768);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	_glException();
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	// Init libRocket
 	ShellFileInterface fileInterface("../../assets/");
@@ -100,9 +100,7 @@ int main(int argc, const char * argv[]) {
 
 		SDL_GL_MakeCurrent(window, glContext);
 		glClearColor(0.0, 0.0, 0.0, 1.0);
-		_glException();
 		glClear(GL_COLOR_BUFFER_BIT);
-		_glException();
 		context->Render();
 		SDL_GL_SwapWindow(window);
 
@@ -111,6 +109,7 @@ int main(int argc, const char * argv[]) {
 			case SDL_WINDOWEVENT:
 				switch (event.window.event) {
 				case SDL_WINDOWEVENT_RESIZED:
+					glViewport(0, 0, event.window.data1, event.window.data2);
 					Rocket::Core::Vector2i v(event.window.data1, event.window.data2);
 					context->SetDimensions(v);
 					renderInterface.SetViewport(event.window.data1, event.window.data2);

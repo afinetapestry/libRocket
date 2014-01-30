@@ -1,11 +1,37 @@
+/*
+ * This source file is part of libRocket, the HTML/CSS Interface Middleware
+ *
+ * For the latest information, see http://www.librocket.com
+ *
+ * Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
+ * Copyright (c) 2014 Jon Hatchett
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ */
+
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <utility>
 
 #include "OpenGL32RenderInterface.hpp"
-
-#include "glexception.hpp"
 
 const char * colorVert = R"delim(
 #version 150
@@ -82,10 +108,8 @@ string GetInfoLog(GLuint object, void (_GL_CALL *glGet__iv)(GLuint, GLenum, GLin
 	GLint length;
 	string log;
 	glGet__iv(object, GL_INFO_LOG_LENGTH, &length);
-	_glException();
 	log.reserve(length);
 	glGet__InfoLog(object, length, NULL, &log[0]);
-	_glException();
 	return log;
 }
 
@@ -113,29 +137,20 @@ struct RendererGeometry {
 
 	RendererGeometry() : vao(0), vbo(0), vio(0), numVert(0), numInd(0), tex(0) {
 		glGenVertexArrays(1, &vao);
-		_glException();
 		glGenBuffers(1, &vbo);
-		_glException();
 		glGenBuffers(1, &vio);
-		_glException();
 	};
 
 	void Bind() {
 		glBindVertexArray(vao);
-		_glException();
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		_glException();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vio);
-		_glException();
 	}
 
 	void Unbind() {
 		glBindVertexArray(0);
-		_glException();
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		_glException();
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		_glException();
 	}
 
 	void Buffer(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture) {
@@ -146,9 +161,7 @@ struct RendererGeometry {
 		Bind();
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(Rocket::Core::Vertex) * num_vertices, vertices, GL_STATIC_DRAW);
-		_glException();
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * num_indices, indices, GL_STATIC_DRAW);
-		_glException();
 
 		Unbind();
 	};
@@ -159,79 +172,53 @@ struct RendererGeometry {
 		Bind();
 
 		glUseProgram(program);
-		_glException();
 
 		vertexPosition = glGetAttribLocation(program, "vertexPosition");
-		_glException();
 		vertexColor = glGetAttribLocation(program, "vertexColor");
-		_glException();
 		trans = glGetUniformLocation(program, "translation");
-		_glException();
 
 		if (tex) {
 			texSampler = glGetUniformLocation(program, "texSampler");
-			_glException();
 			glActiveTexture(GL_TEXTURE0);
-			_glException();
 			glBindTexture(GL_TEXTURE_2D, tex);
-			_glException();
 			glUniform1i(texSampler, 0);
-			_glException();
 
 			vertexTexCoord = glGetAttribLocation(program, "vertexTexCoord");
-			_glException();
 			glEnableVertexAttribArray(vertexTexCoord);
-			_glException();
 			glVertexAttribPointer(vertexTexCoord, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), (GLvoid *)(sizeof(Rocket::Core::Vertex::position) + sizeof(Rocket::Core::Vertex::colour)));
-			_glException();
 		}
 
 		glEnable(GL_BLEND);
-		_glException();
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		_glException();
 
 		glEnableVertexAttribArray(vertexPosition);
-		_glException();
 		glEnableVertexAttribArray(vertexColor);
-		_glException();
 
 		glVertexAttribPointer(vertexPosition, 2, GL_FLOAT, GL_FALSE, sizeof(Rocket::Core::Vertex), 0);
-		_glException();
 		glVertexAttribPointer(vertexColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Rocket::Core::Vertex), (GLvoid *)sizeof(Rocket::Core::Vertex::position));
-		_glException();
 
 		glUniform2f(trans, translation.x, translation.y);
-		_glException();
 
 		// Draw the geometry
 		glDrawElements(GL_TRIANGLES, numInd, GL_UNSIGNED_INT, 0);
-		_glException();
 
 		glDisableVertexAttribArray(vertexPosition);
-		_glException();
 		glDisableVertexAttribArray(vertexColor);
-		_glException();
 
 		if (tex) {
 			glDisableVertexAttribArray(vertexTexCoord);
-			_glException();
 		}
 
 		glDisable(GL_BLEND);
-		_glException();
 
 		Unbind();
 
 		glUseProgram(0);
-		_glException();
 	};
 
 	~RendererGeometry() {
 		glDeleteBuffers(1, &vio);
-		_glException();
 		glDeleteBuffers(1, &vbo);
-		_glException();
 		glDeleteVertexArrays(1, &vao);
 	};
 };
@@ -240,92 +227,66 @@ RendererGeometry * dynamic;
 
 OpenGL32RenderInterface::OpenGL32RenderInterface() {
 	colorVertShader = glCreateShader(GL_VERTEX_SHADER);
-	_glException();
 	int colorVertLen = strlen(colorVert);
 	glShaderSource(colorVertShader, 1, &colorVert, &colorVertLen);
-	_glException();
 	glCompileShader(colorVertShader);
-	_glException();
 	GLint texVertStatus;
 	glGetShaderiv(colorVertShader, GL_COMPILE_STATUS, &texVertStatus);
-	_glException();
 	if (!texVertStatus) {
 		string log = "Shader Compilation Failed:\n" + GetInfoLog(colorVertShader, *glGetShaderiv, *glGetShaderInfoLog);
 		throw runtime_error(log);
 	}
 
 	colorFragShader = glCreateShader(GL_FRAGMENT_SHADER);
-	_glException();
 	int colorFragLen = strlen(colorFrag);
 	glShaderSource(colorFragShader, 1, &colorFrag, &colorFragLen);
-	_glException();
 	glCompileShader(colorFragShader);
-	_glException();
 	GLint colorFragStatus;
 	glGetShaderiv(colorFragShader, GL_COMPILE_STATUS, &colorFragStatus);
-	_glException();
 	if (!colorFragStatus) {
 		string log = "Shader Compilation Failed:\n" + GetInfoLog(colorFragShader, *glGetShaderiv, *glGetShaderInfoLog);
 		throw runtime_error(log);
 	}
 
 	colorProgram = glCreateProgram();
-	_glException();
 	glAttachShader(colorProgram, colorVertShader);
-	_glException();
 	glAttachShader(colorProgram, colorFragShader);
-	_glException();
 	glLinkProgram(colorProgram);
-	_glException();
 	GLint colorLinkStatus;
 	glGetProgramiv(colorProgram, GL_LINK_STATUS, &colorLinkStatus);
-	_glException();
 	if (!colorLinkStatus) {
 		string log = "Shader Linking Failed:\n" + GetInfoLog(colorProgram, *glGetProgramiv, *glGetProgramInfoLog);
 		throw runtime_error(log);
 	}
 
 	texVertShader = glCreateShader(GL_VERTEX_SHADER);
-	_glException();
 	int texVertLen = strlen(texVert);
 	glShaderSource(texVertShader, 1, &texVert, &texVertLen);
-	_glException();
 	glCompileShader(texVertShader);
-	_glException();
 	GLint colorVertStatus;
 	glGetShaderiv(texVertShader, GL_COMPILE_STATUS, &colorVertStatus);
-	_glException();
 	if (!colorVertStatus) {
 		string log = "Shader Compilation Failed:\n" + GetInfoLog(texVertShader, *glGetShaderiv, *glGetShaderInfoLog);
 		throw runtime_error(log);
 	}
 
 	texFragShader = glCreateShader(GL_FRAGMENT_SHADER);
-	_glException();
 	int texFragLen = strlen(texFrag);
 	glShaderSource(texFragShader, 1, &texFrag, &texFragLen);
-	_glException();
 	glCompileShader(texFragShader);
-	_glException();
 	GLint texFragStatus;
 	glGetShaderiv(texFragShader, GL_COMPILE_STATUS, &texFragStatus);
-	_glException();
 	if (!colorFragStatus) {
 		string log = "Shader Compilation Failed:\n" + GetInfoLog(texFragShader, *glGetShaderiv, *glGetShaderInfoLog);
 		throw runtime_error(log);
 	}
 
 	texProgram = glCreateProgram();
-	_glException();
 	glAttachShader(texProgram, texVertShader);
-	_glException();
 	glAttachShader(texProgram, texFragShader);
-		_glException();
 	glLinkProgram(texProgram);
-	_glException();
 	GLint texLinkStatus;
 	glGetProgramiv(texProgram, GL_LINK_STATUS, &texLinkStatus);
-	_glException();
 	if (!texLinkStatus) {
 		string log = "Shader Linking Failed:\n" + GetInfoLog(texProgram, *glGetProgramiv, *glGetProgramInfoLog);
 		throw runtime_error(log);
@@ -336,17 +297,11 @@ OpenGL32RenderInterface::OpenGL32RenderInterface() {
 
 OpenGL32RenderInterface::~OpenGL32RenderInterface() {
 	glUseProgram(0);
-	_glException();
 	glDeleteProgram(texProgram);
-	_glException();
 	glDeleteProgram(colorProgram);
-	_glException();
 	glDeleteShader(texFragShader);
-	_glException();
 	glDeleteShader(colorFragShader);
-	_glException();
 	glDeleteShader(texVertShader);
-	_glException();
 
 	delete dynamic;
 }
@@ -354,9 +309,6 @@ OpenGL32RenderInterface::~OpenGL32RenderInterface() {
 void OpenGL32RenderInterface::SetViewport(int width, int height) {
 	m_width = width;
 	m_height = height;
-
-	glViewport(0, 0, width, height);
-	_glException();
 
 	float left = 0.0f;
 	float right = width;
@@ -375,19 +327,12 @@ void OpenGL32RenderInterface::SetViewport(int width, int height) {
 	};
 
 	glUseProgram(texProgram);
-	_glException();
 	projection = glGetUniformLocation(texProgram, "projection");
-	_glException();
 	glUniformMatrix4fv(projection, 1, GL_FALSE, (const GLfloat *)&proj);
-	_glException();
 	glUseProgram(colorProgram);
-	_glException();
 	projection = glGetUniformLocation(colorProgram, "projection");
-	_glException();
 	glUniformMatrix4fv(projection, 1, GL_FALSE, (const GLfloat *)&proj);
-	_glException();
 	glUseProgram(0);
-	_glException();
 }
 
 void OpenGL32RenderInterface::RenderGeometry(Rocket::Core::Vertex * vertices, int num_vertices, int * indices, int num_indices, Rocket::Core::TextureHandle texture, const Rocket::Core::Vector2f & translation) {
@@ -419,15 +364,12 @@ void OpenGL32RenderInterface::ReleaseCompiledGeometry(Rocket::Core::CompiledGeom
 void OpenGL32RenderInterface::EnableScissorRegion(bool enable) {
 	if (enable) {
 		glEnable(GL_SCISSOR_TEST);
-		_glException();
 	} else {
 		glDisable(GL_SCISSOR_TEST);
-		_glException();
 	}
 }
 void OpenGL32RenderInterface::SetScissorRegion(int x, int y, int width, int height) {
 	glScissor(x, m_height - (y + height), width, height);
-	_glException();
 }
 
 #pragma pack(1)
@@ -516,26 +458,19 @@ bool OpenGL32RenderInterface::LoadTexture(Rocket::Core::TextureHandle & texture_
 bool OpenGL32RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & texture_handle, const Rocket::Core::byte * source, const Rocket::Core::Vector2i & source_dimensions){
 	GLuint texture_id = 0;
 	glGenTextures(1, &texture_id);
-	_glException();
 	if (texture_id == 0) {
 		printf("Failed to generate textures\n");
 		return false;
 	}
 
 	glBindTexture(GL_TEXTURE_2D, texture_id);
-	_glException();
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, source_dimensions.x, source_dimensions.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, source);
-	_glException();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	_glException();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	_glException();
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	_glException();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	_glException();
 
 	texture_handle = (Rocket::Core::TextureHandle) texture_id;
 
@@ -543,5 +478,4 @@ bool OpenGL32RenderInterface::GenerateTexture(Rocket::Core::TextureHandle & text
 }
 void OpenGL32RenderInterface::ReleaseTexture(Rocket::Core::TextureHandle texture_handle) {
 	glDeleteTextures(1, (GLuint*) &texture_handle);
-	_glException();
 }
