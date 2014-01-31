@@ -9,7 +9,7 @@ libRocket uses the time-tested open standards XHTML1.0 and CSS2.0 (while borrowi
 HTML5 and CSS3), and extends them with features suited towards real-time applications. Because of 
 this, you don't have to learn a whole new proprietary technology like other libraries in this space.
 
-This fork of libRocket contains a complete SDL2 + OpenGL 3.2 version of the libRocket System, File and Render interfaces free to be used by anyone.
+This fork of libRocket contains a complete SDL2 + OpenGL 3.2 version of the libRocket System, File and Render interfaces free to be used by anyone. The sample is located at Samples/basic/sdl2/.
 
 ## Features
 
