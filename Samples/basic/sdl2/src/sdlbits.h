@@ -5,11 +5,10 @@
 #ifndef SDLBITS_H
 #define SDLBITS_H
 
-#if defined(WIN32)
-#	undef main
+#if defined(_WIN32)
 #	include <SDL.h>
 #elif defined(__APPLE__)
-#	include <SDL2/SDL.h>
+#	include <SDL.h>
 #elif defined(__linux__)
 #	include <SDL2/SDL.h>
 #else
@@ -17,3 +16,4 @@
 #endif
 
 #endif
+
