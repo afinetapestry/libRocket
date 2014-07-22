@@ -31,7 +31,7 @@
 #include <Rocket/Core/Python/Utilities.h>
 
 #include "EventWrapper.h"
-#include "ElementDocumentWrapper.h"
+#include <Rocket/Core/Python/ElementDocumentWrapper.h>
 
 namespace Rocket {
 namespace Core {

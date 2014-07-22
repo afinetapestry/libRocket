@@ -158,6 +158,7 @@ set(Core_PUB_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Include/Rocket/Core/PropertyParser.h
     ${PROJECT_SOURCE_DIR}/Include/Rocket/Core/ContextInstancer.h
     ${PROJECT_SOURCE_DIR}/Include/Rocket/Core.h
+	${PROJECT_SOURCE_DIR}/Include/Rocket/Core/Python/ElementDocumentWrapper.h
 )
 
 set(Core_SRC_FILES
@@ -421,7 +422,7 @@ set(Pycore_HDR_FILES
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/EventInterface.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/ContextProxy.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/Converters.h
-    ${PROJECT_SOURCE_DIR}/Source/Core/Python/ElementDocumentWrapper.h
+	${PROJECT_SOURCE_DIR}/Include/Rocket/Core/Python/ElementDocumentWrapper.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/precompiled.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/ElementChildrenProxy.h
     ${PROJECT_SOURCE_DIR}/Source/Core/Python/EventInstancer.h

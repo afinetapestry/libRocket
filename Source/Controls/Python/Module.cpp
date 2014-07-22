@@ -41,7 +41,7 @@ namespace Python {
 Module module;
 
 BOOST_PYTHON_MODULE(_rocketcontrols)
-{	
+{
 	// Pull in the core python namespace, to make sure its loaded
 	// the boost python definitions
 	Py_XDECREF(PyImport_ImportModule("_rocketcore"));

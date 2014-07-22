@@ -26,7 +26,7 @@
  */
 
 #include "precompiled.h"
-#include "ElementDocumentWrapper.h"
+#include <Rocket/Core/Python/ElementDocumentWrapper.h>
 #include <Rocket/Core/Stream.h>
 #include <Rocket/Core/Python/Utilities.h>
 
@@ -122,10 +122,10 @@ void ElementDocumentWrapper::LoadScript(Rocket::Core::Stream* stream, const Rock
 	}
 }
 
-PyObject* ElementDocumentWrapper::GetModuleNamespace()
+/*PyObject* ElementDocumentWrapper::GetModuleNamespace()
 {
 	return module_namespace;
-}
+}*/
 
 void ElementDocumentWrapper::PreprocessCode(Rocket::Core::String &code, Rocket::Core::Stream *stream)
 {

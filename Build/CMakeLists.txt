@@ -94,7 +94,7 @@ if(BUILD_PYTHON_BINDINGS)
     find_package(Boost 1.40.0 COMPONENTS python REQUIRED)
     if(Boost_FOUND)
         include_directories(${Boost_INCLUDE_DIR})
-        list(APPEND PY_BINDINGS_LINK_LIBS ${Boost_LIBRARIES})
+        list(APPEND PY_BINDINGS_LINK_LIBS ${PYTHON_LIBRARY} ${Boost_LIBRARIES})
     endif()
 
 endif()
@@ -134,7 +134,7 @@ foreach(library ${LIBRARIES})
     
     if(APPLE)
     	set_target_properties(${NAME} PROPERTIES
-    					OSX_ARCHITECTURES "i386;x86_64;"
+    					OSX_ARCHITECTURES "x86_64"
     	)
     endif()
 
@@ -170,7 +170,7 @@ endif()
 # Link libraries ===================
 #===================================
 
-target_link_libraries(RocketCore ${CORE_LINK_LIBS})
+target_link_libraries(RocketCore ${CORE_LINK_LIBS} ${PY_BINDINGS_LINK_LIBS})
 target_link_libraries(RocketControls RocketCore)
 target_link_libraries(RocketDebugger RocketCore)
 
@@ -196,7 +196,7 @@ macro(bl_sample NAME)
     
     if (APPLE)
     	# We only support i386 for the samples as it still uses Carbon
-    	set_target_properties(${NAME} PROPERTIES OSX_ARCHITECTURES "i386;" )
+		#set_target_properties(${NAME} PROPERTIES OSX_ARCHITECTURES "i386;" )
     endif()
 
     target_link_libraries(${NAME} ${ARGN})

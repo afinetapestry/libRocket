@@ -36,7 +36,7 @@
 #include <Rocket/Core/Factory.h>
 #include "ElementAttributeProxy.h"
 #include "ElementChildrenProxy.h"
-#include "ElementDocumentWrapper.h"
+#include <Rocket/Core/Python/ElementDocumentWrapper.h>
 #include "ElementStyleProxy.h"
 #include <Rocket/Core/Python/ElementInstancer.h>
 #include <Rocket/Core/Python/ElementWrapper.h>

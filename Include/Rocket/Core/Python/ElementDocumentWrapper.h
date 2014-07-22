@@ -43,7 +43,7 @@ namespace Python {
 	@author Lloyd Weehuizen
  */
 
-class ElementDocumentWrapper : public ElementWrapper< ElementDocument >
+class ROCKETCORE_API ElementDocumentWrapper : public ElementWrapper< ElementDocument >
 {
 public:
 	ElementDocumentWrapper(PyObject* self, const char* tag);
@@ -53,7 +53,9 @@ public:
 	virtual void LoadScript(Rocket::Core::Stream* stream, const Rocket::Core::String& source_name);
 
 	/// Get the namespace for this module
-	PyObject* GetModuleNamespace();
+	PyObject* GetModuleNamespace() {
+		return module_namespace;
+	}
 
 private:
 	// Python module that represents this document
